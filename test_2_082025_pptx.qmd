@@ -1,0 +1,457 @@
+---
+title: "Descriptive Statistics and Probability in Biomedical Data Science"
+author: "<br><br><span style='font-size:25px;'><strong>Lesley Chapman Hannah, Ph.D., M.S.</strong></span><br>College of Graduate Studies<br>Northeast Ohio Medical University"
+
+format: pptx
+
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(scales)
+```
+
+### Descriptive Statistics: Core Concepts
+
+::: {style="font-size:0.65em"}
+-   descriptive statistics consists of methods for organizing, summarizing, and presenting data in a way that provides insight into the characteristics of the dataset
+
+-   involves translacting raw biological or clinical data into structured summaries and visualizations that reflect the underlying variable type and probability structure of the data
+
+-   descriptive statistics is often the first step in understanding one's data
+
+Before modeling, hypothesis testing, or prediction one must determine:
+
+-   what kind of variable is being measured
+-   which summaries are mathematically appropriate
+-   which plots reflect the structure of the variable
+:::
+
+------------------------------------------------------------------------
+
+### Descriptive Statistics and Variable Types
+
+::: {style="font-size:0.65em"}
+In descriptive statistics first consider:
+
+> **What type of variable am I describing?**
+
+-   in analysis, variables arise from different sources:
+
+    -   mutation status \[present/absent\] → categorical
+    -   tumor stage \[I–IV\] → ordinal
+    -   mutation counts → discrete
+    -   biomarker levels → continuous
+
+-   each data structure determines a distinct set of statistical properties, e.x.:
+
+-   set of allowable values the variable can take
+
+-   how variability appears across observations
+
+-   which numerical summaries appropriately represent the data
+
+-   which visualizations accurately reflect the distribution
+
+-   starting with continuing the variable being described you allow for:
+
+    -   summaries align with the data-generating process
+    -   visualizations reflect the true distribution of values
+:::
+
+------------------------------------------------------------------------
+
+### Variable Types Used in Descriptive Statistics
+
+Variable types used in analysis:
+
+-   **categorical nominal variables**
+-   **ordinal variables**
+-   **count variables**
+-   **continuous variables**
+
+------------------------------------------------------------------------
+
+### How Probability Connects to Description
+
+-   probability tells us how often values or outcomes occur
+
+-   probability defined based on outcome variables:
+
+    -   categorical variables: probabilities of categories
+    -   ordinal variables: probabilities across ordered levels
+    -   count variables: probabilities of integer counts
+    -   continuous variables: density across a numeric range
+
+------------------------------------------------------------------------
+
+### Code Example Primer
+
+**Goal**: highlight how descriptive statistics can be used as summary and how plots are chosen based on variable type
+
+1.  generate a sample from a hypothetical population\
+2.  identify four different variable types\
+3.  compute probability-oriented summaries for each type\
+4.  match each variable to an appropriate plot\
+5.  interpret how variable structure determines description
+
+------------------------------------------------------------------------
+
+### Code Example
+
+::: {style="font-size:0.7em"}
+**Background**: you received data from a pilot study designed to characterize inflammatory signaling and genomic alteration patterns in a cohort of 160 patients
+
+Each patient represents a single observational unit sampled from a broader clinical population. The goal is to describe how molecular and clinical features vary across individuals and how these features are structured in the data.
+
+For each patient, we record:
+
+**mutation status**: mutation absent or present \[categorical nominal\]
+
+**tumor stage**: ordered clinical classification that describes how far a cancer has progressed in the body - I,II,III,IV \[ordinal\]
+
+**mutation count** from a targeted sequencing panel: count of the number of times an alleles at a genomic locus - 0,1,2 \[count\]
+
+**IL-6 concentration \[pg/mL\]**: as a circulating inflammatory biomarker \[continuous\]
+:::
+
+------------------------------------------------------------------------
+
+### Code Example
+
+::: {style="font-size:0.7em"}
+```{r, echo=FALSE}
+set.seed(301)
+
+biomed_sim <- tibble(
+  patient_id = sprintf("P%03d", 1:160),
+  mutation_status = sample(
+    c("Absent", "Present"),
+    size = 160,
+    replace = TRUE,
+    prob = c(0.68, 0.32)
+  ),
+  tumor_stage = sample(
+    c("I", "II", "III", "IV"),
+    size = 160,
+    replace = TRUE,
+    prob = c(0.22, 0.33, 0.27, 0.18)
+  ),
+  mutation_count = rpois(160, lambda = 3.1),
+  il6_pg_ml = round(rlnorm(160, meanlog = log(7.5), sdlog = 0.55), 2)
+) |>
+  mutate(
+    mutation_status = factor(mutation_status),
+    tumor_stage = factor(tumor_stage, levels = c("I", "II", "III", "IV"), ordered = TRUE)
+  )
+```
+
+```{r}
+biomed_sim |> slice_head(n = 10)
+```
+
+**Key concepts**
+
+**Why this simulation supports the lecture concepts**
+
+-   mutation status shows a **categorical probability distribution**
+-   tumor stage shows an **ordered probability distribution**
+-   mutation count shows a **discrete count distribution**
+-   IL-6 shows a **continuous distribution** across a numeric scale
+:::
+
+------------------------------------------------------------------------
+
+### Code Example: Inflammatory Signaling Pathway
+
+::: {style="font-size:0.6em"}
+```{r, echo=FALSE}
+library(tibble)
+library(knitr)
+
+tbl <- tibble(
+  variable = c("mutation_status", "tumor_stage", "mutation_count", "il6_pg_ml"),
+  type = c("Categorical nominal", "Ordinal", "Count", "Continuous"),
+  values = c(
+    "Absent / Present",
+    "I < II < III < IV",
+    "0, 1, 2, ...",
+    "Positive real values"
+  ),
+  descriptive_goal = c(
+    "Counts and proportions by category",
+    "Counts and proportions across ordered levels",
+    "Frequency of each integer count",
+    "Center, spread, and distribution shape"
+  ),
+  plot = c(
+    "Bar plot",
+    "Ordered bar plot",
+    "Bar plot of count frequencies",
+    "Histogram"
+  )
+)
+```
+
+```{r}
+kable(tbl, align = "lllll")
+```
+:::
+
+------------------------------------------------------------------------
+
+### Code Example: Inflammatory Signaling Pathway
+
+::: {style="font-size:0.6em"}
+```{r}
+mutation_summary <- biomed_sim |>
+  count(mutation_status) |>
+  mutate(prob = n / sum(n))
+
+mutation_summary
+```
+
+**Key parts of the code**
+
+-   `count(mutation_status)` counts the number of patients in each category
+-   `mutate(prob = n / sum(n))` converts counts into proportions
+-   `prob` column: probability distribution for mutation status in this sample
+
+**How to interpret the output**
+
+-   `n` gives the observed number of patients in each class
+-   `prob` gives the estimated probability that a randomly selected patient from this sample falls into that class
+-   probabilities sum to 1 because every patient must belong to exactly one mutation-status category
+:::
+
+------------------------------------------------------------------------
+
+### Categorical Example: Plot
+
+::: {style="font-size:0.6em"}
+```{r}
+ggplot(mutation_summary, aes(x = mutation_status, y = prob)) +
+  geom_col() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title = "Mutation Status: Empirical Category Probabilities",
+    x = "Mutation status",
+    y = "Sample proportion"
+  ) + theme_bw()
+```
+
+**Interpretation**
+
+-   categorical variables are described by **counts, proportions, and category probabilities**
+-   X-axis: contains discrete categories
+-   bar height: represents the probability associated with each category
+:::
+
+------------------------------------------------------------------------
+
+### Ordinal Example
+
+::: {style="font-size:0.6em"}
+```{r}
+stage_summary <- biomed_sim |>
+  count(tumor_stage) |>
+  mutate(prob = n / sum(n))
+
+stage_summary
+```
+
+**Code Overview**
+
+-   `tumor_stage`: coded as an ordered factor
+-   `count()`: summary of the number of samples within each tumor stage
+-   `prob = n / sum(n)`: converts counts into sample probabilities
+
+**Notes**
+
+-   stage I through IV define a progression
+-   preserving order makes the summary more interpretable
+:::
+
+------------------------------------------------------------------------
+
+### Ordinal Example
+
+::: {style="font-size:0.6em"}
+```{r}
+ggplot(stage_summary, aes(x = tumor_stage, y = prob)) +
+  geom_col() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title = "Tumor Stage: Ordered Distribution Across Levels",
+    x = "Tumor stage",
+    y = "Sample proportion"
+  ) + theme_bw()
+```
+
+**Interpretation**
+
+-   bar plot chosen to show variable has discrete levels
+-   levels are arranged in clinical order from I to IV
+-   nominal categorical variable vs. ordinal variable: both use proportions, but the ordinal variable includes rank information \[order of bars from stage 1 $\rightarrow$\]
+:::
+
+------------------------------------------------------------------------
+
+### Mutation Count Example
+
+::: {style="font-size:0.6em"}
+```{r}
+library(dplyr)
+library(tidyr)
+
+count_summary <- biomed_sim |>
+  count(mutation_count) |>
+  complete(mutation_count = 0:2, fill = list(n = 0)) |>
+  arrange(mutation_count) |>
+  mutate(prob = n / sum(n))
+
+count_summary
+```
+
+**Code Overview**
+
+`count(mutation_count)`: counts observed frequencies for each mutation count `complete(mutation_count = 0:2, fill = list(n = 0))`: mutation counts at {0,1,2} `prob = n / sum(n)`: converts counts into a probability mass function (PMF)
+
+**Interpretation**:
+
+`mutation_count = 0`: probability that no mutations are observed `mutation_count = 1`: probability of exactly one mutation `mutation_count = 2`: probability of exactly two mutations
+:::
+
+------------------------------------------------------------------------
+
+### Mutation Count Example
+
+::: {style="font-size:0.6em"}
+```{r, echo=FALSE}
+p_count <- ggplot(count_summary, aes(x = factor(mutation_count), y = prob)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Mutation Count: Empirical Probability Mass Function",
+    x = "Mutation count",
+    y = "Sample proportion"
+  ) +
+  theme_bw()
+
+p_count
+```
+
+**Interpretation**
+
+-   each bar represents the probability of observing a specific mutation count within the defined support {0,1,2}
+-   mutation count is restricted to a finite set of allowable integer values {0,1,2} $\rightarrow$ x-axis represents distinct, unordered count levels
+-   height of each bar corresponds to the probability P(X=x) for a specific count
+-   bars are separated because probabilities are assigned to individual count outcomes
+:::
+
+------------------------------------------------------------------------
+
+### Continuous Example: IL-6
+
+::: {style="font-size:0.6em"}
+```{r}
+il6_summary <- biomed_sim |>
+  summarise(
+    n = n(),
+    mean_il6 = mean(il6_pg_ml),
+    median_il6 = median(il6_pg_ml),
+    sd_il6 = sd(il6_pg_ml),
+    iqr_il6 = IQR(il6_pg_ml),
+    min_il6 = min(il6_pg_ml),
+    max_il6 = max(il6_pg_ml)
+  )
+
+il6_summary
+```
+
+**Key parts of the code**
+
+-   `summarise()` reduces the full vector of IL-6 values into a set of descriptive statistics
+-   `mean()` and `median()`: describe summary statistics
+-   `sd()` and `IQR()`: data spread - standard deviation and interquartile range
+-   `min()` and `max()` : defines the observed range
+
+**Interpretation**
+
+-   if the mean \> median: data is often right skewed
+-   larger standard deviation : greater dispersion around the mean
+-   IQR captures the width of the middle 50% of the data
+:::
+
+------------------------------------------------------------------------
+
+### Continuous Example: IL-6
+
+::: {style="font-size:0.6em"}
+```{r, echo=FALSE}
+# compute quartiles
+q1 <- quantile(biomed_sim$il6_pg_ml, 0.25)
+q3 <- quantile(biomed_sim$il6_pg_ml, 0.75)
+med <- median(biomed_sim$il6_pg_ml)
+
+plot2 <- ggplot(biomed_sim, aes(x = il6_pg_ml)) +
+  geom_histogram(bins = 20) +
+  
+  # IQR shaded region
+  annotate("rect",
+           xmin = q1, xmax = q3,
+           ymin = 0, ymax = Inf,
+           alpha = 0.2) +
+  
+  # median line
+  geom_vline(xintercept = med, linetype = "dashed") +
+  
+  labs(
+    title = "IL-6 Distribution Across the Simulated Sample",
+    subtitle = "Shaded region = IQR (middle 50%), dashed line = median",
+    x = "IL-6 (pg/mL)",
+    y = "Number of patients"
+  ) +
+  theme_bw()
+
+plot2
+```
+
+**Interpretation**
+
+-   IL-6 is measured on a continuous numeric scale
+-   histogram groups nearby values into bins → overall distributional shape becomes visible
+-   shaded region represents the interquartile range (IQR), capturing the middle 50% of observed values
+    -   IQR spans from the 25th percentile (Q1) to the 75th percentile (Q3)
+-   dashed line marks the median, $\rightarrow$ central location of the distribution
+:::
+
+------------------------------------------------------------------------
+
+### Summary
+
+::: {style="font-size:0.62em"}
+-   analysis begins by identifying what kind of variable is being measured in descriptive statistics
+
+-   review for descriptive statistics:
+
+observed values → variable type → probability structure → summary → plot observed values
+
+-   `categorical variables` $\rightarrow$ described with counts, proportions, and bar plots
+
+-   `ordinal variables` $\rightarrow$ described with ordered counts, ordered proportions, and plots that preserve rank
+
+-   `count variables` $\rightarrow$ described through frequencies of integer outcomes and probability mass functions
+
+-   `continuous variables` $\rightarrow$ described through center, spread, and distribution shape using summaries such as the mean, median, SD, and IQR
+
+    -   plots: histograms or density-based displays
+
+**Next Lecture**: more focused discussion on variable identification and determining the descriptive metric, probability summary, and plot
+:::
+
+------------------------------------------------------------------------
